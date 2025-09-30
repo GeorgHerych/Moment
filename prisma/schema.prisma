@@ -1,0 +1,147 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  emailVerified DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  profile       Profile?
+  sessions      Session[]
+  accounts      Account[]
+  likesSent     Like[]   @relation("likesFrom")
+  likesReceived Like[]   @relation("likesTo")
+  matchesA      Match[]  @relation("matchesA")
+  matchesB      Match[]  @relation("matchesB")
+  messages      Message[]
+  blocksAsBlocker Block[] @relation("blocksBlocker")
+  blocksAsBlocked Block[] @relation("blocksBlocked")
+  reportsMade   Report[] @relation("reportsMade")
+  reportsReceived Report[] @relation("reportsReceived")
+}
+
+model Profile {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id])
+  displayName   String
+  birthDate     DateTime
+  gender        String
+  orientation   String?
+  bio           String?  @db.Text
+  interests     String[]
+  city          String?
+  lat           Float?
+  lng           Float?
+  distanceKm    Int?
+  minAge        Int?
+  maxAge        Int?
+  visibility    String   @default("public")
+  photos        Photo[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Photo {
+  id        String  @id @default(cuid())
+  profileId String
+  url       String
+  order     Int
+  createdAt DateTime @default(now())
+  profile   Profile @relation(fields: [profileId], references: [id])
+}
+
+model Like {
+  id         String   @id @default(cuid())
+  fromUserId String
+  toUserId   String
+  createdAt  DateTime @default(now())
+  fromUser   User     @relation("likesFrom", fields: [fromUserId], references: [id])
+  toUser     User     @relation("likesTo", fields: [toUserId], references: [id])
+
+  @@unique([fromUserId, toUserId])
+}
+
+model Match {
+  id         String   @id @default(cuid())
+  userAId    String
+  userBId    String
+  createdAt  DateTime @default(now())
+  messages   Message[]
+  userA      User     @relation("matchesA", fields: [userAId], references: [id])
+  userB      User     @relation("matchesB", fields: [userBId], references: [id])
+
+  @@unique([userAId, userBId])
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  matchId   String
+  senderId  String
+  content   String
+  createdAt DateTime @default(now())
+  readAt    DateTime?
+  match     Match    @relation(fields: [matchId], references: [id])
+  sender    User     @relation(fields: [senderId], references: [id])
+}
+
+model Block {
+  id         String   @id @default(cuid())
+  blockerId  String
+  blockedId  String
+  createdAt  DateTime @default(now())
+  blocker    User     @relation("blocksBlocker", fields: [blockerId], references: [id])
+  blocked    User     @relation("blocksBlocked", fields: [blockedId], references: [id])
+
+  @@unique([blockerId, blockedId])
+}
+
+model Report {
+  id         String   @id @default(cuid())
+  reporterId String
+  reportedId String
+  reason     String
+  createdAt  DateTime @default(now())
+  reporter   User     @relation("reportsMade", fields: [reporterId], references: [id])
+  reported   User     @relation("reportsReceived", fields: [reportedId], references: [id])
+}
+
+model Account {
+  id                String @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  access_token      String?
+  token_type        String?
+  scope             String?
+  expires_at        Int?
+  id_token          String?
+  session_state     String?
+  user              User   @relation(fields: [userId], references: [id])
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id])
+}
+
+model VerificationToken {
+  identifier String
+  token      String @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
